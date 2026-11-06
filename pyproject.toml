@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "office-planner"
+version = "0.1.0"
+description = "Plan office / home-office days (Bulgarian holidays) and export them to Apple Calendar."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+office-planner = "office_planner.cli:main"
+
+[project.gui-scripts]
+office-planner-gui = "office_planner.gui.app:main"
+
+[tool.setuptools.packages.find]
+include = ["office_planner*"]
