@@ -56,3 +56,7 @@ month's office target.
 From/To dates (up to 36 months). Only days inside the period are exported, but
 the 50% target is always counted over whole calendar months. Manual changes are kept, and the remaining days are
 re-planned to keep the monthly target.
+
+## License
+
+[GPL-3.0-or-later](LICENSE). Copyright (C) 2026 Chavdar Shishkov.

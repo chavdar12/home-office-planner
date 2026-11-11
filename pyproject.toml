@@ -1,14 +1,20 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]  # SPDX license field
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "office-planner"
-version = "0.1.0"
+version = "0.1.1"
 description = "Plan office / home-office days (Bulgarian holidays) and export them to Apple Calendar."
 readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "Chavdar Shishkov" }]
 requires-python = ">=3.9"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/chavdar12/home-office-planner"
 
 [project.scripts]
 office-planner = "office_planner.cli:main"
@@ -18,3 +24,6 @@ office-planner-gui = "office_planner.gui.app:main"
 
 [tool.setuptools.packages.find]
 include = ["office_planner*"]
+
+[tool.setuptools.package-data]
+"office_planner.gui" = ["icon.png"]

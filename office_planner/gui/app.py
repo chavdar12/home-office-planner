@@ -279,6 +279,10 @@ def main() -> None:
                  "blank windows on current macOS.\nRun the GUI with Homebrew's Python "
                  "instead:  python3.13 -m office_planner.gui\n"
                  "(install it with:  brew install python-tk@3.13)")
+    try:  # title bar / taskbar icon; Windows would show Tk's feather otherwise
+        root.iconphoto(True, tk.PhotoImage(file=str(Path(__file__).with_name("icon.png"))))
+    except tk.TclError:
+        pass  # cosmetic only
     OfficePlannerApp(root)
     root.mainloop()
 

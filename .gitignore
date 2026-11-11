@@ -19,6 +19,18 @@ htmlcov/
 # Generated calendars
 *.ics
 
+# Release builds (see .github/workflows/release.yml)
+*.spec
+launcher.py
+release/
+pkg/
+bg.tiff
+
+# Settings written by the app (portable .exe, backups, interrupted saves)
+office_planner.json
+*.json.broken
+*.json.tmp
+
 # Editors / OS
 .vscode/
 .idea/

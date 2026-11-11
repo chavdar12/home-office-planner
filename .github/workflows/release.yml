@@ -20,9 +20,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: macos-latest, target: dmg }      # Apple Silicon
-          - { os: windows-latest, target: exe }
-          - { os: ubuntu-22.04, target: deb }      # older glibc = runs on more distros
+          - { os: macos-latest, target: dmg, icon: packaging/icon.icns }  # Apple Silicon
+          - { os: windows-latest, target: exe, icon: packaging/icon.ico }
+          # older glibc = runs on more distros; Linux takes its icon from the .desktop file
+          - { os: ubuntu-22.04, target: deb, icon: NONE }
     defaults:
       run:
         shell: bash
@@ -47,7 +48,10 @@ jobs:
           # PyInstaller needs a top-level script; the package uses relative imports.
           echo "from office_planner.gui.app import main; main()" > launcher.py
           ONEFILE=$([ "${{ matrix.target }}" = dmg ] && echo "" || echo "--onefile")
-          pyinstaller --noconfirm --windowed $ONEFILE --name "Office Planner" launcher.py
+          pyinstaller --noconfirm --windowed $ONEFILE --name "Office Planner" \
+            --icon "${{ matrix.icon }}" \
+            --add-data "office_planner/gui/icon.png:office_planner/gui" \
+            --add-data "LICENSE:." launcher.py
           mkdir release
 
       - name: Make .dmg (drag to Applications)
@@ -57,7 +61,7 @@ jobs:
           # 1x + 2x background in one TIFF so it is sharp on Retina screens.
           tiffutil -cathidpicheck packaging/dmg-background.png packaging/dmg-background@2x.png -out bg.tiff
           # Positions match the arrow drawn in packaging/dmg_background.py.
-          create-dmg --volname "Office Planner" --background bg.tiff \
+          create-dmg --volname "Office Planner" --volicon packaging/icon.icns --background bg.tiff \
             --window-size 600 400 --icon-size 128 \
             --icon "Office Planner.app" 160 200 --hide-extension "Office Planner.app" \
             --app-drop-link 440 200 \
@@ -73,11 +77,16 @@ jobs:
         run: |
           PKG=pkg
           install -Dm755 "dist/Office Planner" "$PKG/usr/bin/office-planner-gui"
+          install -Dm644 packaging/debian-copyright "$PKG/usr/share/doc/office-planner/copyright"
+          install -Dm644 office_planner/gui/icon.png "$PKG/usr/share/icons/hicolor/256x256/apps/office-planner.png"
           mkdir -p "$PKG/DEBIAN" "$PKG/usr/share/applications"
           cat > "$PKG/DEBIAN/control" <<CONTROL
           Package: office-planner
           Version: $VERSION
           Architecture: amd64
+          Section: utils
+          Priority: optional
+          Homepage: https://github.com/${{ github.repository }}
           Maintainer: Chavdar Shishkov <${{ github.repository_owner }}@users.noreply.github.com>
           Description: Plan office / home-office days and export them to a calendar (.ics)
           CONTROL
@@ -86,6 +95,7 @@ jobs:
           Type=Application
           Name=Office Planner
           Exec=office-planner-gui
+          Icon=office-planner
           Categories=Office;Calendar;
           Terminal=false
           DESKTOP
