@@ -1,7 +1,8 @@
 name: Release
 
-# Push a tag matching the pyproject version to publish installers:
-#   git tag v0.1.0 && git push origin v0.1.0
+# Releases only come from main: merge dev into main with a pull request, then
+# tag the merge commit with the pyproject version and push the tag:
+#   git switch main && git pull && git tag v0.1.2 && git push origin v0.1.2
 on:
   push:
     tags: [ "v*" ]
@@ -34,8 +35,14 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Check tag matches pyproject version
+      - name: Check tag is on main and matches pyproject version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" -q .status)
+          if [[ $status != behind && $status != identical ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on main"; exit 1
+          fi
           VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
           if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match pyproject version $VERSION"; exit 1

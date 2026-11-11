@@ -34,8 +34,9 @@ Or install it (`pip install .`) to get the `office-planner` and
 Linux (Python 3.9/3.11/3.13, GUI tests under Xvfb) and macOS, then builds the
 wheel and uploads it as an artifact.
 
-**Release:** bump `version` in `pyproject.toml`, then `git tag v<version> && git push
-origin v<version>`. `.github/workflows/release.yml` runs CI, builds a macOS `.dmg`
+**Branches:** work on `dev` (CI runs on every push), merge into `main` with a pull
+request. **Release:** bump `version` in `pyproject.toml` on `dev`, merge the PR, then
+tag `main`: `git switch main && git pull && git tag v<version> && git push origin v<version>`. `.github/workflows/release.yml` runs CI, builds a macOS `.dmg`
 (Apple Silicon, drag-to-Applications window), a portable Windows `.exe` (no
 installer; settings are kept in `office_planner.json` next to it, or in your home
 folder if that folder isn't writable) and a Debian/Ubuntu `.deb` with PyInstaller,
