@@ -34,13 +34,21 @@ Or install it (`pip install .`) to get the `office-planner` and
 Linux (Python 3.9/3.11/3.13, GUI tests under Xvfb) and macOS, then builds the
 wheel and uploads it as an artifact.
 
+**Release:** bump `version` in `pyproject.toml`, then `git tag v<version> && git push
+origin v<version>`. `.github/workflows/release.yml` runs CI, builds a macOS `.dmg`
+(Apple Silicon, drag-to-Applications window), a portable Windows `.exe` (no
+installer; settings are kept in `office_planner.json` next to it, or in your home
+folder if that folder isn't writable) and a Debian/Ubuntu `.deb` with PyInstaller,
+and publishes them as a GitHub release. The DMG background lives in `packaging/`. The installers are unsigned: macOS needs
+right-click > Open the first time, Windows shows a SmartScreen warning.
+
 The GUI needs a Python with Tk 8.6+ (e.g. Homebrew: `brew install python-tk@3.13`).
 macOS's built-in `/usr/bin/python3` ships Tk 8.5, which draws blank windows on
 current macOS. The CLI and tests also work with the built-in Python.
 
 In the GUI, click a day to switch Office/Home; right-click (or Ctrl+click) for
-Day off / Automatic. The **Days off** tab adds vacation periods by date range
-(weekends and holidays are skipped), lists them, and can switch clicking to
+Day off / Automatic. The **Days off** tab adds vacation periods by date range (weekends and holidays are skipped), lists
+them, and can switch clicking to
 "mark day off" mode. Days off don't count as working days, so they lower that
 month's office target.
 

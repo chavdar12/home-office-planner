@@ -3,8 +3,8 @@ import unittest
 from datetime import date
 
 from office_planner.config import PlannerConfig
-from office_planner.holidays import bulgarian_holidays
 from office_planner.dates import add_months, months_in_range, range_for_months
+from office_planner.holidays import bulgarian_holidays
 from office_planner.planner import (DAY_OFF, HOLIDAY, HOME, OFFICE, add_days_off,
                                     day_off_periods, iter_months, month_stats,
                                     plan_month, plan_range)
@@ -121,7 +121,7 @@ class TestDaysOff(unittest.TestCase):
     def test_periods_bridge_weekends_and_holidays(self):
         cfg = PlannerConfig()
         add_days_off(cfg, date(2026, 12, 21), date(2027, 1, 1))  # spans Christmas
-        add_days_off(cfg, date(2027, 1, 4), date(2027, 1, 5))    # continues after weekend
+        add_days_off(cfg, date(2027, 1, 4), date(2027, 1, 5))  # continues after weekend
         add_days_off(cfg, date(2027, 2, 10), date(2027, 2, 10))  # separate
         periods = day_off_periods(cfg)
         self.assertEqual([(s, e, len(days)) for s, e, days in periods], [

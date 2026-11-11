@@ -5,6 +5,7 @@ from __future__ import annotations
 import calendar
 import subprocess
 import sys
+import warnings
 import tkinter as tk
 from dataclasses import replace
 from datetime import date
@@ -12,14 +13,14 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
-from ..config import DEFAULT_PATH, PlannerConfig
-from ..holidays import bulgarian_holidays
-from ..ics import write_ics
-from ..dates import months_in_range
-from ..planner import (DAY_OFF, HOLIDAY, HOME, OFFICE, add_days_off, month_stats,
-                       plan_month)
 from .month_view import COLORS, MonthView
 from .settings_panel import CLICK_DAY_OFF, SettingsPanel
+from ..config import DEFAULT_PATH, PlannerConfig
+from ..dates import months_in_range
+from ..holidays import bulgarian_holidays
+from ..ics import write_ics
+from ..planner import (DAY_OFF, HOLIDAY, HOME, OFFICE, add_days_off, month_stats,
+                       plan_month)
 
 
 class OfficePlannerApp:
@@ -27,12 +28,17 @@ class OfficePlannerApp:
                  today: Optional[date] = None):
         self.root = root
         self.config_path = Path(config_path)
-        self.config = PlannerConfig.load(self.config_path)
+        with warnings.catch_warnings(record=True) as load_warnings:
+            warnings.simplefilter("always")
+            self.config = PlannerConfig.load(self.config_path)
+        self._save_error_shown = False
         self.today = today or date.today()
         self.start, self.end = self.config.period(self.today)
         self.view_year, self.view_month = self.start.year, self.start.month
         self._build()
         self.refresh()
+        for w in load_warnings:
+            messagebox.showwarning("Settings reset", str(w.message), parent=self.root)
 
     # ---------- layout ----------
     def _build(self) -> None:
@@ -171,8 +177,11 @@ class OfficePlannerApp:
     def save(self) -> None:
         try:
             self.config.save(self.config_path)
-        except OSError:
-            pass
+        except OSError as e:
+            if not self._save_error_shown:  # once, not on every click
+                self._save_error_shown = True
+                messagebox.showerror("Settings not saved",
+                                     f"Cannot save {self.config_path}:\n{e}", parent=self.root)
 
     # ---------- day editing ----------
     def set_override(self, d: date, kind: Optional[str]) -> None:
@@ -236,7 +245,7 @@ class OfficePlannerApp:
 
     def reset_settings(self) -> None:
         if messagebox.askyesno("Reset", "Reset settings to defaults? "
-                               "Manual day changes are kept.", parent=self.root):
+                                        "Manual day changes are kept.", parent=self.root):
             self.config = PlannerConfig(overrides=self.config.overrides)
             self.start, self.end = self.config.period(self.today)
             self.settings.load_from_app()
@@ -249,10 +258,14 @@ class OfficePlannerApp:
             initialfile="office_schedule.ics", filetypes=[("iCalendar", "*.ics")])
         if not path:
             return
-        write_ics(path, self.start, self.end, self.config)
+        try:
+            write_ics(path, self.start, self.end, self.config)
+        except OSError as e:
+            messagebox.showerror("Export failed", f"Cannot write {path}:\n{e}", parent=self.root)
+            return
         if sys.platform == "darwin":
             if messagebox.askyesno("Exported", f"Saved to {path}.\n\n"
-                                   "Open it in Calendar now?", parent=self.root):
+                                               "Open it in Calendar now?", parent=self.root):
                 subprocess.run(["open", "-a", "Calendar", path], check=False)
         else:
             messagebox.showinfo("Exported", f"Saved to {path}.", parent=self.root)

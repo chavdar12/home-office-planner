@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import re
 import tkinter as tk
 from datetime import date, datetime
 from tkinter import ttk
 from typing import TYPE_CHECKING, Optional
 
-from ..config import ALARM_EVENING_BEFORE, ALARM_MORNING_OF, WEEKDAY_NAMES
+from ..config import (ALARM_EVENING_BEFORE, ALARM_MORNING_OF, MAX_PERIOD_MONTHS, TIME_RE,
+                      WEEKDAY_NAMES)
 from ..dates import add_months, range_for_months
 from ..planner import HOME, OFFICE, day_off_periods, plan_range
 
@@ -18,9 +18,8 @@ if TYPE_CHECKING:
 CUSTOM = "Custom dates"
 PRESETS = {"Next month": 1, "Next 2 months": 2, "Next 3 months": 3,
            "Next 6 months": 6, "Next 12 months": 12, CUSTOM: 0}
-MAX_MONTHS = 36
+MAX_MONTHS = MAX_PERIOD_MONTHS
 ALARM_CHOICES = {"Evening before": ALARM_EVENING_BEFORE, "Morning of": ALARM_MORNING_OF}
-TIME_RE = re.compile(r"([01]?\d|2[0-3]):[0-5]\d")
 DATE_FORMATS = ("%Y-%m-%d", "%d.%m.%Y", "%d.%m.%y", "%d/%m/%Y")
 
 CLICK_SWITCH = "switch"
@@ -213,7 +212,7 @@ class SettingsPanel(ttk.Frame):
             self.periods_list.insert("end", fmt_period(start, end, len(days)))
         total = sum(len(days) for _, _, days in self._periods)
         self.off_total.configure(text=f"Total: {total} working day{'s' if total != 1 else ''}"
-                                 if total else "No days off yet.")
+        if total else "No days off yet.")
 
     # ---------- period ----------
     def _set_dates(self, start: date, end: date) -> None:

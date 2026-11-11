@@ -11,6 +11,7 @@ class TestOrthodoxEaster(unittest.TestCase):
             2023: date(2023, 4, 16), 2024: date(2024, 5, 5),
             2025: date(2025, 4, 20), 2026: date(2026, 4, 12),
             2027: date(2027, 5, 2), 2028: date(2028, 4, 16),
+            2100: date(2100, 5, 2),  # Julian-Gregorian gap grows to 14 days
         }
         for year, expected in known.items():
             with self.subTest(year=year):
@@ -32,13 +33,13 @@ class TestBulgarianHolidays(unittest.TestCase):
 
     def test_moved_days_off(self):
         cases = [
-            date(2021, 5, 4),    # May 1 on Holy Saturday
-            date(2022, 1, 3),    # Jan 1 on Saturday
+            date(2021, 5, 4),  # May 1 on Holy Saturday
+            date(2022, 1, 3),  # Jan 1 on Saturday
             date(2022, 12, 27),  # Dec 24 (Sat) / Dec 25 (Sun)
             date(2022, 12, 28),
-            date(2024, 9, 23),   # Sep 22 on Sunday
+            date(2024, 9, 23),  # Sep 22 on Sunday
             date(2026, 12, 28),  # Dec 26 on Saturday
-            date(2027, 5, 4),    # May 1 on Saturday
+            date(2027, 5, 4),  # May 1 on Saturday
         ]
         for d in cases:
             with self.subTest(day=d):

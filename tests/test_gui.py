@@ -10,6 +10,7 @@ from office_planner.planner import DAY_OFF, HOME, OFFICE
 # is created after the first one was destroyed. Each test uses a Toplevel.
 try:
     import tkinter as tk
+
     ROOT = tk.Tk()
     ROOT.withdraw()
 except Exception:  # no tkinter or no display
@@ -67,11 +68,11 @@ class TestGui(unittest.TestCase):
 
     def test_settings_panel_updates_config(self):
         panel = self.app.settings
-        panel.weekday_vars[4].set(True)   # Friday
+        panel.weekday_vars[4].set(True)  # Friday
         panel.share_var.set("60")
         self.assertEqual(self.app.config.office_weekdays, [0, 2, 4])
         self.assertAlmostEqual(self.app.config.office_share, 0.6)
-        panel.share_var.set("")           # half-typed value is ignored
+        panel.share_var.set("")  # half-typed value is ignored
         self.assertAlmostEqual(self.app.config.office_share, 0.6)
 
     def test_presets(self):

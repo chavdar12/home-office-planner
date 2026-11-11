@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [ main, master ]
   pull_request:
   workflow_dispatch:
+  workflow_call:  # reused by release.yml
 
 permissions:
   contents: read

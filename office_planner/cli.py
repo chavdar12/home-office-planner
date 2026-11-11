@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import date
+from pathlib import Path
 
 from .config import DEFAULT_PATH, PlannerConfig
 from .dates import months_in_range, range_for_months
@@ -12,26 +14,43 @@ from .ics import write_ics
 from .planner import month_stats, plan_month
 
 
+def positive_int(text: str) -> int:
+    n = int(text)
+    if n < 1:
+        raise ValueError
+    return n
+
+
+def year_month(text: str) -> date:
+    return date.fromisoformat(text + "-01")
+
+
 def main(argv=None) -> None:
     today = date.today()
     p = argparse.ArgumentParser(
         prog="python3 -m office_planner",
         description="Generate an Office / Home office calendar. "
                     "Default: the next 12 months from today.")
-    p.add_argument("--from", dest="start", type=date.fromisoformat,
-                   help="first day, YYYY-MM-DD (default: today)")
+    start = p.add_mutually_exclusive_group()
+    start.add_argument("--from", dest="start", type=date.fromisoformat,
+                       help="first day, YYYY-MM-DD (default: today)")
+    start.add_argument("--start-month", type=year_month,
+                       help="start on the 1st of a month, YYYY-MM")
     p.add_argument("--to", dest="end", type=date.fromisoformat,
                    help="last day, YYYY-MM-DD (default: --months after --from)")
-    p.add_argument("--start-month", help="start on the 1st of a month, YYYY-MM")
-    p.add_argument("--months", type=int, help="length in months (default 12)")
+    p.add_argument("--months", type=positive_int, help="length in months (default 12)")
     p.add_argument("-o", "--output", default="office_schedule.ics")
     p.add_argument("--config", help=f"settings JSON, incl. its period (e.g. {DEFAULT_PATH})")
     args = p.parse_args(argv)
 
-    config = PlannerConfig.load(args.config) if args.config else PlannerConfig()
-    if args.start_month:
-        y, m = map(int, args.start_month.split("-"))
-        args.start = date(y, m, 1)
+    config = PlannerConfig()
+    if args.config:  # unlike the GUI, don't silently fall back to defaults
+        try:
+            config = PlannerConfig.from_dict(
+                json.loads(Path(args.config).read_text(encoding="utf-8")))
+        except (OSError, ValueError, TypeError, AttributeError) as e:
+            p.error(f"cannot use --config {args.config}: {e}")
+    args.start = args.start or args.start_month
 
     if args.start or args.end or args.months:
         start = args.start or today
@@ -48,7 +67,10 @@ def main(argv=None) -> None:
         print(f"{y}-{m:02d}  {s.working:>6}{s.office:>8}{s.home:>6}"
               f"{s.holidays + s.days_off:>5}{s.share:>9.0%}")
 
-    write_ics(args.output, start, end, config)
+    try:
+        write_ics(args.output, start, end, config)
+    except OSError as e:
+        p.exit(1, f"Cannot write {args.output}: {e}\n")
     print(f"\nWritten {args.output}")
 
 

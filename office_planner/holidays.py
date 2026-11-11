@@ -21,13 +21,14 @@ FIXED_HOLIDAYS = {
 
 
 def orthodox_easter(year: int) -> date:
-    """Orthodox Easter (Gregorian date), Meeus Julian algorithm. Valid 1900-2099."""
+    """Orthodox Easter (Gregorian date), Meeus Julian algorithm."""
     a, b, c = year % 4, year % 7, year % 19
     d = (19 * c + 15) % 30
     e = (2 * a + 4 * b - d + 34) % 7
     month = (d + e + 114) // 31
     day = (d + e + 114) % 31 + 1
-    return date(year, month, day) + timedelta(days=13)
+    # Julian -> Gregorian offset: 13 days in 1900-2099, 14 from 2100, ...
+    return date(year, month, day) + timedelta(days=year // 100 - year // 400 - 2)
 
 
 def bulgarian_holidays(year: int) -> Dict[date, str]:

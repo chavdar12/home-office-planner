@@ -1,9 +1,13 @@
+import json
+import sys
 import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
 
-from office_planner.config import PlannerConfig
+from unittest import mock
+
+from office_planner.config import PlannerConfig, default_path
 
 
 class TestConfig(unittest.TestCase):
@@ -36,7 +40,43 @@ class TestConfig(unittest.TestCase):
             path = Path(tmp) / "cfg.json"
             self.assertEqual(PlannerConfig.load(path), PlannerConfig())
             path.write_text("{not json")
-            self.assertEqual(PlannerConfig.load(path), PlannerConfig())
+            with self.assertWarns(UserWarning):
+                self.assertEqual(PlannerConfig.load(path), PlannerConfig())
+
+    def test_save_keeps_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real, link = Path(tmp) / "real.json", Path(tmp) / "link.json"
+            real.write_text("{}")
+            link.symlink_to(real)
+            PlannerConfig(office_share=0.6).save(link)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(PlannerConfig.load(real).office_share, 0.6)
+
+    def test_invalid_values_rejected_and_file_kept(self):
+        bad = [[], {"overrides": {"2026-11-09": "holiday"}}, {"alarm_day": "x"},
+               {"alarm_time": "25:00"}, {"office_share": "half"}, {"office_share": 2},
+               {"extra_preference": [7]}, {"extra_preference": [1.0]},
+               {"period_months": 1000}, {"period_months": 1.5},
+               {"custom_start": "2027-02-01", "custom_end": "2027-01-01"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cfg.json"
+            for data in bad:
+                with self.subTest(data=data):
+                    path.write_text(json.dumps(data))
+                    with self.assertWarns(UserWarning):
+                        self.assertEqual(PlannerConfig.load(path), PlannerConfig())
+                    self.assertEqual((Path(tmp) / "cfg.json.broken").read_text(), json.dumps(data))
+
+    def test_portable_windows_build_keeps_settings_next_to_exe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = Path(tmp) / "OfficePlanner.exe"
+            with mock.patch.object(sys, "frozen", True, create=True), \
+                    mock.patch.object(sys, "platform", "win32"), \
+                    mock.patch.object(sys, "executable", str(exe)):
+                self.assertEqual(default_path(), Path(tmp) / "office_planner.json")
+                with mock.patch("tempfile.TemporaryFile", side_effect=PermissionError):
+                    self.assertEqual(default_path(), Path.home() / ".office_planner.json")
+        self.assertEqual(default_path(), Path.home() / ".office_planner.json")
 
     def test_unknown_keys_ignored(self):
         cfg = PlannerConfig.from_dict({"office_share": 0.4, "something_old": 1})

@@ -116,6 +116,19 @@ class TestCli(unittest.TestCase):
              "--to", "2026-11-01", "-o", "/dev/null"], cwd=ROOT, capture_output=True)
         self.assertNotEqual(result.returncode, 0)
 
+    def test_cli_rejects_bad_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = str(Path(tmp) / "out.ics")
+            for args in (["--months", "0"], ["--start-month", "2026-13"],
+                         ["--from", "2026-01-01", "--start-month", "2026-02"],
+                         ["--config", str(Path(tmp) / "missing.json")],
+                         ["-o", str(Path(tmp) / "no" / "dir.ics"), "--months", "1"]):
+                with self.subTest(args=args):
+                    result = subprocess.run([sys.executable, "-m", "office_planner", "-o", out,
+                                             *args], cwd=ROOT, capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn("Traceback", result.stderr)
+
     def test_cli_uses_config_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg_path, out = Path(tmp) / "cfg.json", Path(tmp) / "out.ics"

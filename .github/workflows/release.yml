@@ -1,0 +1,113 @@
+name: Release
+
+# Push a tag matching the pyproject version to publish installers:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: [ "v*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    name: Package (${{ matrix.target }})
+    needs: ci
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - { os: macos-latest, target: dmg }      # Apple Silicon
+          - { os: windows-latest, target: exe }
+          - { os: ubuntu-22.04, target: deb }      # older glibc = runs on more distros
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check tag matches pyproject version
+        run: |
+          VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match pyproject version $VERSION"; exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build app with PyInstaller
+        run: |
+          python -m pip install pyinstaller==6.11.1
+          # PyInstaller needs a top-level script; the package uses relative imports.
+          echo "from office_planner.gui.app import main; main()" > launcher.py
+          ONEFILE=$([ "${{ matrix.target }}" = dmg ] && echo "" || echo "--onefile")
+          pyinstaller --noconfirm --windowed $ONEFILE --name "Office Planner" launcher.py
+          mkdir release
+
+      - name: Make .dmg (drag to Applications)
+        if: matrix.target == 'dmg'
+        run: |
+          brew install create-dmg
+          # 1x + 2x background in one TIFF so it is sharp on Retina screens.
+          tiffutil -cathidpicheck packaging/dmg-background.png packaging/dmg-background@2x.png -out bg.tiff
+          # Positions match the arrow drawn in packaging/dmg_background.py.
+          create-dmg --volname "Office Planner" --background bg.tiff \
+            --window-size 600 400 --icon-size 128 \
+            --icon "Office Planner.app" 160 200 --hide-extension "Office Planner.app" \
+            --app-drop-link 440 200 \
+            "release/OfficePlanner-$VERSION-macos-arm64.dmg" "dist/Office Planner.app"
+
+      - name: Rename .exe
+        if: matrix.target == 'exe'
+        # Single file, no installer; keeps its settings next to itself (see config.py).
+        run: mv "dist/Office Planner.exe" "release/OfficePlanner-$VERSION-windows-x64-portable.exe"
+
+      - name: Make .deb
+        if: matrix.target == 'deb'
+        run: |
+          PKG=pkg
+          install -Dm755 "dist/Office Planner" "$PKG/usr/bin/office-planner-gui"
+          mkdir -p "$PKG/DEBIAN" "$PKG/usr/share/applications"
+          cat > "$PKG/DEBIAN/control" <<CONTROL
+          Package: office-planner
+          Version: $VERSION
+          Architecture: amd64
+          Maintainer: Chavdar Shishkov <${{ github.repository_owner }}@users.noreply.github.com>
+          Description: Plan office / home-office days and export them to a calendar (.ics)
+          CONTROL
+          cat > "$PKG/usr/share/applications/office-planner.desktop" <<DESKTOP
+          [Desktop Entry]
+          Type=Application
+          Name=Office Planner
+          Exec=office-planner-gui
+          Categories=Office;Calendar;
+          Terminal=false
+          DESKTOP
+          dpkg-deb --build --root-owner-group "$PKG" "release/office-planner_${VERSION}_amd64.deb"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.target }}
+          path: release/*
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --generate-notes
