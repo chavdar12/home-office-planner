@@ -1,6 +1,6 @@
 name: Release
 
-# Releases only come from main: merge dev into main with a pull request, then
+# Releases only come from main: merge into main with a pull request, then
 # tag the merge commit with the pyproject version and push the tag:
 #   git switch main && git pull && git tag v0.1.2 && git push origin v0.1.2
 on:
