@@ -3,10 +3,10 @@ import unittest
 from datetime import date
 
 from office_planner.config import PlannerConfig
-from office_planner.dates import add_months, months_in_range, range_for_months
+from office_planner.dates import add_months, iter_months, months_in_range, range_for_months
 from office_planner.holidays import bulgarian_holidays
 from office_planner.planner import (DAY_OFF, HOLIDAY, HOME, OFFICE, add_days_off,
-                                    day_off_periods, iter_months, month_stats,
+                                    day_off_periods, month_stats,
                                     plan_month, plan_range)
 
 MONTHS = [(y, m) for y in range(2026, 2031) for m in range(1, 13)]

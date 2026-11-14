@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from .config import PlannerConfig
-from .dates import add_months, iter_months, months_in_range, range_for_months  # noqa: F401
+from .dates import months_in_range
 from .holidays import bulgarian_holidays
 
 OFFICE, HOME, HOLIDAY, DAY_OFF = "office", "home", "holiday", "day_off"
