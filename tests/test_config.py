@@ -1,11 +1,9 @@
 import json
 import sys
 import tempfile
-import unittest
+import unittest.mock
 from datetime import date
 from pathlib import Path
-
-from unittest import mock
 
 from office_planner.config import PlannerConfig, default_path
 
@@ -70,11 +68,11 @@ class TestConfig(unittest.TestCase):
     def test_portable_windows_build_keeps_settings_next_to_exe(self):
         with tempfile.TemporaryDirectory() as tmp:
             exe = Path(tmp) / "OfficePlanner.exe"
-            with mock.patch.object(sys, "frozen", True, create=True), \
-                    mock.patch.object(sys, "platform", "win32"), \
-                    mock.patch.object(sys, "executable", str(exe)):
+            with unittest.mock.patch.object(sys, "frozen", True, create=True), \
+                    unittest.mock.patch.object(sys, "platform", "win32"), \
+                    unittest.mock.patch.object(sys, "executable", str(exe)):
                 self.assertEqual(default_path(), Path(tmp) / "office_planner.json")
-                with mock.patch("tempfile.TemporaryFile", side_effect=PermissionError):
+                with unittest.mock.patch("tempfile.TemporaryFile", side_effect=PermissionError):
                     self.assertEqual(default_path(), Path.home() / ".office_planner.json")
         self.assertEqual(default_path(), Path.home() / ".office_planner.json")
 

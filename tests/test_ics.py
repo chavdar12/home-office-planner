@@ -7,7 +7,8 @@ from pathlib import Path
 
 from office_planner.config import PlannerConfig
 from office_planner.ics import alarm_trigger, build_ics
-from office_planner.planner import DAY_OFF, iter_months, plan_month
+from office_planner.dates import iter_months
+from office_planner.planner import DAY_OFF, plan_month
 
 ROOT = Path(__file__).resolve().parent.parent
 STAMP = datetime(2026, 11, 6, tzinfo=timezone.utc)
