@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import sys
@@ -12,7 +11,7 @@ import warnings
 from dataclasses import asdict, dataclass, field, fields
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any
 
 from .dates import range_for_months
 
@@ -25,9 +24,10 @@ def default_path() -> Path:
         portable = Path(sys.executable).with_name("office_planner.json")
         try:  # e.g. not writable under C:\Program Files -> fall back to home
             tempfile.TemporaryFile(dir=portable.parent).close()
-            return portable
         except OSError:
             pass
+        else:
+            return portable
     return Path.home() / ".office_planner.json"
 
 
@@ -42,28 +42,28 @@ MAX_PERIOD_MONTHS = 36
 @dataclass
 class PlannerConfig:
     # Weekdays (0=Mon .. 4=Fri) that are always office days.
-    office_weekdays: List[int] = field(default_factory=lambda: [0, 2])
+    office_weekdays: list[int] = field(default_factory=lambda: [0, 2])
     # Minimum share of working days per month spent in the office.
     office_share: float = 0.5
     # Order in which extra office days are chosen when the share isn't met.
-    extra_preference: List[int] = field(default_factory=lambda: [1, 3, 4, 0, 2])
+    extra_preference: list[int] = field(default_factory=lambda: [1, 3, 4, 0, 2])
     # Reminder: on the evening before or on the morning of the day, at HH:MM.
     alarm_enabled: bool = True
     alarm_day: str = ALARM_EVENING_BEFORE
     alarm_time: str = "18:00"
     # Manual per-day choices: date -> "office" | "home" | "day_off".
-    overrides: Dict[date, str] = field(default_factory=dict)
+    overrides: dict[date, str] = field(default_factory=dict)
     # Period to plan/export: N months from today, or custom dates when 0.
     period_months: int = 12
-    custom_start: Optional[date] = None
-    custom_end: Optional[date] = None
+    custom_start: date | None = None
+    custom_end: date | None = None
 
-    def period(self, today: date) -> Tuple[date, date]:
+    def period(self, today: date) -> tuple[date, date]:
         if self.period_months == 0 and self.custom_start and self.custom_end:
             return self.custom_start, self.custom_end
         return range_for_months(today, self.period_months or 12)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["overrides"] = {d.isoformat(): k for d, k in sorted(self.overrides.items())}
         for key in ("custom_start", "custom_end"):
@@ -72,7 +72,7 @@ class PlannerConfig:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PlannerConfig":
+    def from_dict(cls, data: dict[str, Any]) -> PlannerConfig:
         known = {f.name for f in fields(cls)}
         data = {k: v for k, v in data.items() if k in known}
         if "overrides" in data:
@@ -106,10 +106,10 @@ class PlannerConfig:
         path = Path(path).resolve()  # a symlinked file stays a symlink
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
-        os.replace(tmp, path)
+        tmp.replace(path)
 
     @classmethod
-    def load(cls, path: Path = DEFAULT_PATH) -> "PlannerConfig":
+    def load(cls, path: Path = DEFAULT_PATH) -> PlannerConfig:
         """Load settings; fall back to defaults if the file is missing or broken."""
         path = Path(path)
         try:
@@ -124,7 +124,8 @@ class PlannerConfig:
             try:
                 shutil.copyfile(path, backup)
             except OSError:
-                backup = None
-            warnings.warn(f"{path} is invalid, using default settings."
-                          + (f" The old file was copied to {backup}." if backup else ""))
+                note = ""
+            else:
+                note = f" The old file was copied to {backup}."
+            warnings.warn(f"{path} is invalid, using default settings.{note}", stacklevel=2)
             return cls()

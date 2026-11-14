@@ -5,7 +5,7 @@ from office_planner.holidays import bulgarian_holidays, orthodox_easter
 
 
 class TestOrthodoxEaster(unittest.TestCase):
-    def test_known_dates(self):
+    def test_known_dates(self) -> None:
         known = {
             2021: date(2021, 5, 2), 2022: date(2022, 4, 24),
             2023: date(2023, 4, 16), 2024: date(2024, 5, 5),
@@ -19,19 +19,19 @@ class TestOrthodoxEaster(unittest.TestCase):
 
 
 class TestBulgarianHolidays(unittest.TestCase):
-    def test_fixed_holidays_present(self):
+    def test_fixed_holidays_present(self) -> None:
         hol = bulgarian_holidays(2027)
         for m, d in [(1, 1), (3, 3), (5, 1), (5, 6), (5, 24),
                      (9, 6), (9, 22), (12, 24), (12, 25), (12, 26)]:
             self.assertIn(date(2027, m, d), hol)
 
-    def test_easter_days(self):
+    def test_easter_days(self) -> None:
         hol = bulgarian_holidays(2027)
         for d in (date(2027, 4, 30), date(2027, 5, 1), date(2027, 5, 2), date(2027, 5, 3)):
             self.assertIn(d, hol)
         self.assertIn("Holy Saturday", hol[date(2027, 5, 1)])
 
-    def test_moved_days_off(self):
+    def test_moved_days_off(self) -> None:
         cases = [
             date(2021, 5, 4),  # May 1 on Holy Saturday
             date(2022, 1, 3),  # Jan 1 on Saturday
@@ -47,10 +47,10 @@ class TestBulgarianHolidays(unittest.TestCase):
                 self.assertIn(d, hol)
                 self.assertTrue(hol[d].startswith("Day off"))
 
-    def test_easter_sunday_not_moved(self):
+    def test_easter_sunday_not_moved(self) -> None:
         self.assertNotIn(date(2026, 4, 14), bulgarian_holidays(2026))
 
-    def test_no_moved_day_when_holiday_on_weekday(self):
+    def test_no_moved_day_when_holiday_on_weekday(self) -> None:
         self.assertNotIn(date(2027, 3, 4), bulgarian_holidays(2027))
 
 

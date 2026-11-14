@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Dict
+
+from .dates import SATURDAY
 
 # Fixed-date public holidays (month, day): name
 FIXED_HOLIDAYS = {
@@ -31,7 +32,7 @@ def orthodox_easter(year: int) -> date:
     return date(year, month, day) + timedelta(days=year // 100 - year // 400 - 2)
 
 
-def bulgarian_holidays(year: int) -> Dict[date, str]:
+def bulgarian_holidays(year: int) -> dict[date, str]:
     """All official non-working days of a year, including moved days off.
 
     A fixed holiday falling on a weekend moves to the next working day
@@ -53,10 +54,10 @@ def bulgarian_holidays(year: int) -> Dict[date, str]:
 
     moved = {}
     for d in sorted(hol):
-        if d not in fixed or d.weekday() < 5:
+        if d not in fixed or d.weekday() < SATURDAY:
             continue
         nxt = d + timedelta(days=1)
-        while nxt.weekday() >= 5 or nxt in hol or nxt in moved:
+        while nxt.weekday() >= SATURDAY or nxt in hol or nxt in moved:
             nxt += timedelta(days=1)
         moved[nxt] = f"Day off (moved from {hol[d].split(' / ')[0]})"
     hol.update(moved)

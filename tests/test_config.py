@@ -9,7 +9,7 @@ from office_planner.config import PlannerConfig, default_path
 
 
 class TestConfig(unittest.TestCase):
-    def test_round_trip(self):
+    def test_round_trip(self) -> None:
         cfg = PlannerConfig(office_weekdays=[1], office_share=0.6, alarm_day="same",
                             alarm_time="08:00", overrides={date(2026, 11, 9): "home"})
         with tempfile.TemporaryDirectory() as tmp:
@@ -17,7 +17,7 @@ class TestConfig(unittest.TestCase):
             cfg.save(path)
             self.assertEqual(PlannerConfig.load(path), cfg)
 
-    def test_period_round_trip_and_resolution(self):
+    def test_period_round_trip_and_resolution(self) -> None:
         today = date(2026, 11, 6)
         cfg = PlannerConfig(period_months=0, custom_start=date(2027, 1, 1),
                             custom_end=date(2027, 3, 31))
@@ -33,7 +33,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(PlannerConfig(period_months=0).period(today),
                          (today, date(2027, 11, 5)))
 
-    def test_missing_or_broken_file_gives_defaults(self):
+    def test_missing_or_broken_file_gives_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "cfg.json"
             self.assertEqual(PlannerConfig.load(path), PlannerConfig())
@@ -41,7 +41,7 @@ class TestConfig(unittest.TestCase):
             with self.assertWarns(UserWarning):
                 self.assertEqual(PlannerConfig.load(path), PlannerConfig())
 
-    def test_save_keeps_symlink(self):
+    def test_save_keeps_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             real, link = Path(tmp) / "real.json", Path(tmp) / "link.json"
             real.write_text("{}")
@@ -50,7 +50,7 @@ class TestConfig(unittest.TestCase):
             self.assertTrue(link.is_symlink())
             self.assertEqual(PlannerConfig.load(real).office_share, 0.6)
 
-    def test_invalid_values_rejected_and_file_kept(self):
+    def test_invalid_values_rejected_and_file_kept(self) -> None:
         bad = [[], {"overrides": {"2026-11-09": "holiday"}}, {"alarm_day": "x"},
                {"alarm_time": "25:00"}, {"office_share": "half"}, {"office_share": 2},
                {"extra_preference": [7]}, {"extra_preference": [1.0]},
@@ -65,7 +65,7 @@ class TestConfig(unittest.TestCase):
                         self.assertEqual(PlannerConfig.load(path), PlannerConfig())
                     self.assertEqual((Path(tmp) / "cfg.json.broken").read_text(), json.dumps(data))
 
-    def test_portable_windows_build_keeps_settings_next_to_exe(self):
+    def test_portable_windows_build_keeps_settings_next_to_exe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             exe = Path(tmp) / "OfficePlanner.exe"
             with unittest.mock.patch.object(sys, "frozen", True, create=True), \
@@ -76,7 +76,7 @@ class TestConfig(unittest.TestCase):
                     self.assertEqual(default_path(), Path.home() / ".office_planner.json")
         self.assertEqual(default_path(), Path.home() / ".office_planner.json")
 
-    def test_unknown_keys_ignored(self):
+    def test_unknown_keys_ignored(self) -> None:
         cfg = PlannerConfig.from_dict({"office_share": 0.4, "something_old": 1})
         self.assertEqual(cfg.office_share, 0.4)
 
