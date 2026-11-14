@@ -5,15 +5,13 @@ from __future__ import annotations
 import tkinter as tk
 from datetime import date, datetime
 from tkinter import ttk
-from typing import TYPE_CHECKING, Optional
+from typing import Iterable, Optional, Protocol
 
 from ..config import (ALARM_EVENING_BEFORE, ALARM_MORNING_OF, MAX_PERIOD_MONTHS, TIME_RE,
-                      WEEKDAY_NAMES)
+                      PlannerConfig, WEEKDAY_NAMES)
 from ..dates import add_months, range_for_months
 from ..planner import HOME, OFFICE, day_off_periods, plan_range
 
-if TYPE_CHECKING:
-    from .app import OfficePlannerApp
 
 CUSTOM = "Custom dates"
 PRESETS = {"Next month": 1, "Next 2 months": 2, "Next 3 months": 3,
@@ -43,8 +41,27 @@ def fmt_period(start: date, end: date, count: int) -> str:
     return f"{start:%d %b} - {end:%d %b %Y}  ({days})"
 
 
+class PlannerApp(Protocol):
+    """What the panel needs from OfficePlannerApp; typed here so the panel doesn't import app.py back."""
+
+    config: PlannerConfig
+    today: date
+    start: date
+    end: date
+
+    def show_month(self, year: int, month: int) -> None: pass
+    def set_range(self, start: date, end: date) -> None: pass
+    def settings_changed(self) -> None: pass
+    def add_days_off(self, start: date, end: date) -> int: pass
+    def remove_days_off(self, days: Iterable[date]) -> None: pass
+    def clear_month_overrides(self) -> None: pass
+    def clear_all_overrides(self) -> None: pass
+    def reset_settings(self) -> None: pass
+    def export(self) -> None: pass
+
+
 class SettingsPanel(ttk.Frame):
-    def __init__(self, master, app: "OfficePlannerApp"):
+    def __init__(self, master, app: PlannerApp):
         super().__init__(master, padding=10)
         self.app = app
         self._loading = False
