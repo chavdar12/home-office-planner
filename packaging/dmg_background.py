@@ -1,6 +1,7 @@
 # Regenerate: pip install pillow && python packaging/dmg_background.py packaging   (macOS fonts)
 # Draws the DMG window background: 600x400 points; app icon at (160,200), Applications at (440,200).
 import sys
+
 from PIL import Image, ImageDraw, ImageFont
 
 W, H, K = 600, 400, 8  # draw at 8x, downscale for smooth edges

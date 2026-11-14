@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from pathlib import Path
 
 from .config import ALARM_EVENING_BEFORE, PlannerConfig
 from .holidays import bulgarian_holidays
@@ -35,7 +35,7 @@ def alarm_trigger(alarm_day: str, alarm_time: str) -> str:
 
 
 def make_event(day: date, summary: str, description: str, stamp: str,
-               trigger: Optional[str]) -> list:
+               trigger: str | None) -> list[str]:
     lines = [
         "BEGIN:VEVENT",
         f"UID:{uuid.uuid5(uuid.NAMESPACE_URL, f'office-plan-{day}')}",
@@ -58,8 +58,8 @@ def make_event(day: date, summary: str, description: str, stamp: str,
     return lines
 
 
-def build_ics(start: date, end: date, config: Optional[PlannerConfig] = None,
-              stamp: Optional[datetime] = None) -> str:
+def build_ics(start: date, end: date, config: PlannerConfig | None = None,
+              stamp: datetime | None = None) -> str:
     """Calendar with one all-day event per weekday from start to end (inclusive)."""
     config = config or PlannerConfig()
     stamp_s = (stamp or datetime.now(timezone.utc)).strftime("%Y%m%dT%H%M%SZ")
@@ -83,6 +83,7 @@ def build_ics(start: date, end: date, config: Optional[PlannerConfig] = None,
     return "\r\n".join(out) + "\r\n"
 
 
-def write_ics(path, *args, **kwargs) -> None:
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        f.write(build_ics(*args, **kwargs))
+def write_ics(path: str | Path, start: date, end: date, config: PlannerConfig | None = None,
+              stamp: datetime | None = None) -> None:
+    with Path(path).open("w", encoding="utf-8", newline="") as f:
+        f.write(build_ics(start, end, config, stamp))

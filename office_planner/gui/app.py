@@ -3,29 +3,29 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import subprocess
 import sys
-import warnings
 import tkinter as tk
+import warnings
+from collections.abc import Iterable
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Optional
 
-from .month_view import COLORS, MonthView
-from .settings_panel import CLICK_DAY_OFF, SettingsPanel
 from ..config import DEFAULT_PATH, PlannerConfig
 from ..dates import months_in_range
 from ..holidays import bulgarian_holidays
 from ..ics import write_ics
-from ..planner import (DAY_OFF, HOLIDAY, HOME, OFFICE, add_days_off, month_stats,
-                       plan_month)
+from ..planner import DAY_OFF, HOLIDAY, HOME, OFFICE, add_days_off, month_stats, plan_month
+from .month_view import COLORS, MonthView
+from .settings_panel import CLICK_DAY_OFF, SettingsPanel
 
 
 class OfficePlannerApp:
-    def __init__(self, root: tk.Tk, config_path: Path = DEFAULT_PATH,
-                 today: Optional[date] = None):
+    def __init__(self, root: tk.Tk | tk.Toplevel, config_path: Path = DEFAULT_PATH,
+                 today: date | None = None) -> None:
         self.root = root
         self.config_path = Path(config_path)
         with warnings.catch_warnings(record=True) as load_warnings:
@@ -98,8 +98,8 @@ class OfficePlannerApp:
         self.summary_note = ttk.Label(table, foreground="#666")
         self.summary_note.grid(row=1, column=0, sticky="w", pady=(4, 0))
 
-        self.root.bind("<Left>", lambda e: self.shift_month(-1))
-        self.root.bind("<Right>", lambda e: self.shift_month(1))
+        self.root.bind("<Left>", lambda _e: self.shift_month(-1))
+        self.root.bind("<Right>", lambda _e: self.shift_month(1))
 
     # ---------- state changes ----------
     def refresh(self) -> None:
@@ -113,7 +113,7 @@ class OfficePlannerApp:
         self.stats_label.configure(
             text=f"{s.working} working days   |   Office {s.office} ({s.share:.0%})"
                  f"   |   Home {s.home}   |   {target}")
-        self.month_view.show(y, m, plan, holidays, self.config.overrides, self.today,
+        self.month_view.show(y, m, plan, holidays, self.config.overrides, today=self.today,
                              period=(self.start, self.end))
         self._fill_summary()
         self.settings.refresh_days_off()
@@ -140,7 +140,7 @@ class OfficePlannerApp:
             text="* only part of this month is in the period; the 50% target is "
                  "still counted over the whole month." if partial else "")
 
-    def _on_summary_select(self, _event=None) -> None:
+    def _on_summary_select(self, _event: object = None) -> None:
         sel = self.summary.selection()
         if not sel:
             return
@@ -184,7 +184,7 @@ class OfficePlannerApp:
                                      f"Cannot save {self.config_path}:\n{e}", parent=self.root)
 
     # ---------- day editing ----------
-    def set_override(self, d: date, kind: Optional[str]) -> None:
+    def set_override(self, d: date, kind: str | None) -> None:
         if kind is None:
             self.config.overrides.pop(d, None)
         else:
@@ -203,7 +203,7 @@ class OfficePlannerApp:
             self.save()
         return added
 
-    def remove_days_off(self, days) -> None:
+    def remove_days_off(self, days: Iterable[date]) -> None:
         for d in days:
             if self.config.overrides.get(d) == DAY_OFF:
                 del self.config.overrides[d]
@@ -266,7 +266,8 @@ class OfficePlannerApp:
         if sys.platform == "darwin":
             if messagebox.askyesno("Exported", f"Saved to {path}.\n\n"
                                                "Open it in Calendar now?", parent=self.root):
-                subprocess.run(["open", "-a", "Calendar", path], check=False)
+                # Fixed argv and no shell; only the user-chosen path is passed through.
+                subprocess.run(["/usr/bin/open", "-a", "Calendar", path], check=False)  # noqa: S603
         else:
             messagebox.showinfo("Exported", f"Saved to {path}.", parent=self.root)
 
@@ -279,10 +280,9 @@ def main() -> None:
                  "blank windows on current macOS.\nRun the GUI with Homebrew's Python "
                  "instead:  python3.13 -m office_planner.gui\n"
                  "(install it with:  brew install python-tk@3.13)")
-    try:  # title bar / taskbar icon; Windows would show Tk's feather otherwise
+    # Title bar / taskbar icon; Windows would show Tk's feather otherwise. Cosmetic only.
+    with contextlib.suppress(tk.TclError):
         root.iconphoto(True, tk.PhotoImage(file=str(Path(__file__).with_name("icon.png"))))
-    except tk.TclError:
-        pass  # cosmetic only
     OfficePlannerApp(root)
     root.mainloop()
 

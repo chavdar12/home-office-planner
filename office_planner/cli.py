@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
@@ -25,16 +26,16 @@ def year_month(text: str) -> date:
     return date.fromisoformat(text + "-01")
 
 
-def main(argv=None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     today = date.today()
     p = argparse.ArgumentParser(
         prog="python3 -m office_planner",
         description="Generate an Office / Home office calendar. "
                     "Default: the next 12 months from today.")
-    start = p.add_mutually_exclusive_group()
-    start.add_argument("--from", dest="start", type=date.fromisoformat,
+    start_group = p.add_mutually_exclusive_group()
+    start_group.add_argument("--from", dest="start", type=date.fromisoformat,
                        help="first day, YYYY-MM-DD (default: today)")
-    start.add_argument("--start-month", type=year_month,
+    start_group.add_argument("--start-month", type=year_month,
                        help="start on the 1st of a month, YYYY-MM")
     p.add_argument("--to", dest="end", type=date.fromisoformat,
                    help="last day, YYYY-MM-DD (default: --months after --from)")

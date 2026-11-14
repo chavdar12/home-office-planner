@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import tkinter as tk
+from collections.abc import Iterable, Sequence
 from datetime import date, datetime
 from tkinter import ttk
-from typing import Iterable, Optional, Protocol
+from typing import Protocol
 
-from ..config import (ALARM_EVENING_BEFORE, ALARM_MORNING_OF, MAX_PERIOD_MONTHS, TIME_RE,
-                      PlannerConfig, WEEKDAY_NAMES)
+from ..config import ALARM_EVENING_BEFORE, ALARM_MORNING_OF, MAX_PERIOD_MONTHS, TIME_RE, WEEKDAY_NAMES, PlannerConfig
 from ..dates import add_months, range_for_months
 from ..planner import HOME, OFFICE, day_off_periods, plan_range
-
 
 CUSTOM = "Custom dates"
 PRESETS = {"Next month": 1, "Next 2 months": 2, "Next 3 months": 3,
@@ -20,11 +19,13 @@ MAX_MONTHS = MAX_PERIOD_MONTHS
 ALARM_CHOICES = {"Evening before": ALARM_EVENING_BEFORE, "Morning of": ALARM_MORNING_OF}
 DATE_FORMATS = ("%Y-%m-%d", "%d.%m.%Y", "%d.%m.%y", "%d/%m/%Y")
 
+MAX_SHARE_PERCENT = 100
+
 CLICK_SWITCH = "switch"
 CLICK_DAY_OFF = "day_off"
 
 
-def parse_date(text: str) -> Optional[date]:
+def parse_date(text: str) -> date | None:
     text = text.strip()
     for fmt in DATE_FORMATS:
         try:
@@ -61,18 +62,18 @@ class PlannerApp(Protocol):
 
 
 class SettingsPanel(ttk.Frame):
-    def __init__(self, master, app: PlannerApp):
+    def __init__(self, master: tk.Misc, app: PlannerApp) -> None:
         super().__init__(master, padding=10)
         self.app = app
         self._loading = False
-        self._periods = []
+        self._periods: list[tuple[date, date, list[date]]] = []
         self.click_mode = tk.StringVar(value=CLICK_SWITCH)
         self._build()
         self.load_from_app()
 
     # ---------- layout ----------
     @staticmethod
-    def _section(parent, title: str) -> ttk.LabelFrame:
+    def _section(parent: tk.Misc, title: str) -> ttk.LabelFrame:
         frame = ttk.LabelFrame(parent, text=title, padding=8)
         frame.pack(fill="x", pady=(0, 8))
         return frame
@@ -91,7 +92,7 @@ class SettingsPanel(ttk.Frame):
                     self.alarm_time_var, *self.weekday_vars]:
             var.trace_add("write", lambda *_: self._changed())
 
-    def _build_schedule(self, tab) -> None:
+    def _build_schedule(self, tab: tk.Misc) -> None:
         f = self._section(tab, "Period")
         self.preset_var = tk.StringVar()
         self.from_var = tk.StringVar()
@@ -133,7 +134,7 @@ class SettingsPanel(ttk.Frame):
         ttk.Button(f, text="Down", width=6, command=lambda: self._move_pref(1)
                    ).grid(row=1, column=1, padx=6, sticky="n")
 
-    def _build_days_off(self, tab) -> None:
+    def _build_days_off(self, tab: tk.Misc) -> None:
         f = self._section(tab, "Add days off")
         self.off_from_var = tk.StringVar()
         self.off_to_var = tk.StringVar()
@@ -146,8 +147,8 @@ class SettingsPanel(ttk.Frame):
         ttk.Button(f, text="Add", command=self.add_days_off
                    ).grid(row=0, column=2, rowspan=2, padx=(4, 0), sticky="ns")
         for entry in (from_entry, to_entry):
-            entry.bind("<Return>", lambda e: self.add_days_off())
-        ttk.Label(f, text="e.g. 2026-12-21 or 21.12.2026. Leave \"To\" empty\n"
+            entry.bind("<Return>", lambda _e: self.add_days_off())
+        ttk.Label(f, text='e.g. 2026-12-21 or 21.12.2026. Leave "To" empty\n'
                           "for one day. Weekends and holidays are skipped.",
                   foreground="#666").grid(row=2, column=0, columnspan=3, sticky="w",
                                           pady=(6, 0))
@@ -158,7 +159,7 @@ class SettingsPanel(ttk.Frame):
         self.periods_list = tk.Listbox(f, height=9, width=34, exportselection=False,
                                        activestyle="none")
         self.periods_list.grid(row=0, column=0, columnspan=2, sticky="ew")
-        self.periods_list.bind("<Double-Button-1>", lambda e: self._show_selected_period())
+        self.periods_list.bind("<Double-Button-1>", lambda _e: self._show_selected_period())
         ttk.Button(f, text="Show", command=self._show_selected_period
                    ).grid(row=1, column=0, sticky="ew", pady=(6, 0), padx=(0, 3))
         ttk.Button(f, text="Remove", command=self.remove_selected_period
@@ -174,7 +175,7 @@ class SettingsPanel(ttk.Frame):
         ttk.Label(f, text="Right-click (or Ctrl+click) a day for all options.",
                   foreground="#666").pack(anchor="w", pady=(4, 0))
 
-    def _build_export(self, tab) -> None:
+    def _build_export(self, tab: tk.Misc) -> None:
         f = self._section(tab, "Reminder")
         self.alarm_on_var = tk.BooleanVar()
         self.alarm_day_var = tk.StringVar()
@@ -258,15 +259,9 @@ class SettingsPanel(ttk.Frame):
         if self._loading:
             return
         start, end = parse_date(self.from_var.get()), parse_date(self.to_var.get())
-        error = None
-        if start is None or end is None:
-            error = "Enter dates like 2026-12-01 or 01.12.2026."
-        elif end < start:
-            error = "\"To\" must not be before \"From\"."
-        elif end >= add_months(start, MAX_MONTHS):
-            error = f"The period can be at most {MAX_MONTHS} months."
-        if error:
-            self.period_info.configure(text=error, foreground="#b3261e")
+        error = self._period_error(start, end)
+        if error is not None or start is None or end is None:
+            self.period_info.configure(text=error or "", foreground="#b3261e")
             return
         if self.preset_var.get() != CUSTOM:
             self._loading = True
@@ -275,6 +270,16 @@ class SettingsPanel(ttk.Frame):
         cfg = self.app.config
         cfg.period_months, cfg.custom_start, cfg.custom_end = 0, start, end
         self.app.set_range(start, end)
+
+    @staticmethod
+    def _period_error(start: date | None, end: date | None) -> str | None:
+        if start is None or end is None:
+            return "Enter dates like 2026-12-01 or 01.12.2026."
+        if end < start:
+            return '"To" must not be before "From".'
+        if end >= add_months(start, MAX_MONTHS):
+            return f"The period can be at most {MAX_MONTHS} months."
+        return None
 
     def refresh_period_info(self) -> None:
         start, end = self.app.start, self.app.end
@@ -299,8 +304,8 @@ class SettingsPanel(ttk.Frame):
             self.off_from_var.set("")
             self.off_to_var.set("")
 
-    def _selected_period(self):
-        sel = self.periods_list.curselection()
+    def _selected_period(self) -> tuple[date, date, list[date]] | None:
+        sel = self.periods_list.curselection()  # type: ignore[no-untyped-call]  # unannotated in typeshed
         return self._periods[sel[0]] if sel else None
 
     def _show_selected_period(self) -> None:
@@ -314,14 +319,14 @@ class SettingsPanel(ttk.Frame):
             self.app.remove_days_off(period[2])
 
     # ---------- schedule settings ----------
-    def _fill_pref(self, order) -> None:
+    def _fill_pref(self, order: Sequence[int]) -> None:
         full = list(order) + [d for d in range(5) if d not in order]
         self.pref_list.delete(0, "end")
         for d in full:
             self.pref_list.insert("end", WEEKDAY_NAMES[d])
 
     def _move_pref(self, delta: int) -> None:
-        sel = self.pref_list.curselection()
+        sel = self.pref_list.curselection()  # type: ignore[no-untyped-call]  # unannotated in typeshed
         if not sel:
             return
         i, j = sel[0], sel[0] + delta
@@ -342,7 +347,7 @@ class SettingsPanel(ttk.Frame):
         except ValueError:
             return
         time = self.alarm_time_var.get().strip()
-        if not (0 <= share <= 100 and TIME_RE.fullmatch(time)):
+        if not (0 <= share <= MAX_SHARE_PERCENT and TIME_RE.fullmatch(time)):
             return
 
         cfg = self.app.config

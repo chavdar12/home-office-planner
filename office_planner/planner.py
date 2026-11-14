@@ -6,10 +6,9 @@ import math
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, List, Optional, Tuple
 
 from .config import PlannerConfig
-from .dates import months_in_range
+from .dates import SATURDAY, months_in_range
 from .holidays import bulgarian_holidays
 
 OFFICE, HOME, HOLIDAY, DAY_OFF = "office", "home", "holiday", "day_off"
@@ -17,23 +16,21 @@ NON_WORKING = {HOLIDAY, DAY_OFF}
 
 
 def plan_range(start: date, end: date,
-               config: Optional[PlannerConfig] = None) -> Dict[date, str]:
+               config: PlannerConfig | None = None) -> dict[date, str]:
     """Plan of every weekday from start to end (inclusive).
 
     Whole months are planned (the office target is monthly), then trimmed.
     """
-    out = {}
-    for y, m in months_in_range(start, end):
-        for d, kind in plan_month(y, m, config).items():
-            if start <= d <= end:
-                out[d] = kind
-    return out
+    return {d: kind
+            for y, m in months_in_range(start, end)
+            for d, kind in plan_month(y, m, config).items()
+            if start <= d <= end}
 
 
-def weekdays_of_month(year: int, month: int) -> List[date]:
+def weekdays_of_month(year: int, month: int) -> list[date]:
     d, out = date(year, month, 1), []
     while d.month == month:
-        if d.weekday() < 5:
+        if d.weekday() < SATURDAY:
             out.append(d)
         d += timedelta(days=1)
     return out
@@ -43,8 +40,8 @@ def required_office_days(working_days: int, share: float) -> int:
     return math.ceil(round(working_days * share, 6))
 
 
-def plan_month(year: int, month: int, config: Optional[PlannerConfig] = None,
-               holidays: Optional[Dict[date, str]] = None) -> Dict[date, str]:
+def plan_month(year: int, month: int, config: PlannerConfig | None = None,
+               holidays: dict[date, str] | None = None) -> dict[date, str]:
     """Return {date: kind} for every weekday (Mon-Fri) of the month.
 
     1. Official holidays are non-working.
@@ -73,8 +70,14 @@ def plan_month(year: int, month: int, config: Optional[PlannerConfig] = None,
     office = sum(plan[d] == OFFICE for d in working)
 
     pref = list(config.extra_preference)
-    rank = lambda wd: pref.index(wd) if wd in pref else len(pref)
-    week = lambda d: d.isocalendar()[:2]
+
+    def rank(weekday: int) -> int:
+        return pref.index(weekday) if weekday in pref else len(pref)
+
+    def week(d: date) -> tuple[int, int]:
+        year, week_number, _ = d.isocalendar()
+        return year, week_number
+
 
     while office < required:
         candidates = [d for d in working if plan[d] == HOME and d not in locked]
@@ -88,7 +91,7 @@ def plan_month(year: int, month: int, config: Optional[PlannerConfig] = None,
 
 
 def is_workday(d: date) -> bool:
-    return d.weekday() < 5 and d not in bulgarian_holidays(d.year)
+    return d.weekday() < SATURDAY and d not in bulgarian_holidays(d.year)
 
 
 def add_days_off(config: PlannerConfig, start: date, end: date) -> int:
@@ -104,9 +107,9 @@ def add_days_off(config: PlannerConfig, start: date, end: date) -> int:
     return added
 
 
-def day_off_periods(config: PlannerConfig) -> List[Tuple[date, date, List[date]]]:
+def day_off_periods(config: PlannerConfig) -> list[tuple[date, date, list[date]]]:
     """Group days off into periods; weekends/holidays in between don't split them."""
-    periods: List[Tuple[date, date, List[date]]] = []
+    periods: list[tuple[date, date, list[date]]] = []
     for d in sorted(k for k, v in config.overrides.items() if v == DAY_OFF):
         if periods:
             start, end, days = periods[-1]
@@ -114,7 +117,7 @@ def day_off_periods(config: PlannerConfig) -> List[Tuple[date, date, List[date]]
             while gap < d and not is_workday(gap):
                 gap += timedelta(days=1)
             if gap == d:
-                periods[-1] = (start, d, days + [d])
+                periods[-1] = (start, d, [*days, d])
                 continue
         periods.append((d, d, [d]))
     return periods
@@ -140,8 +143,8 @@ class MonthStats:
         return self.office >= self.required
 
 
-def month_stats(year: int, month: int, plan: Dict[date, str],
-                config: Optional[PlannerConfig] = None) -> MonthStats:
+def month_stats(year: int, month: int, plan: dict[date, str],
+                config: PlannerConfig | None = None) -> MonthStats:
     config = config or PlannerConfig()
     counts = Counter(plan.values())
     working = counts[OFFICE] + counts[HOME]

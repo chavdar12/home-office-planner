@@ -27,3 +27,28 @@ include = ["office_planner*"]
 
 [tool.setuptools.package-data]
 "office_planner.gui" = ["icon.png"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "UP", "SIM", "C4", "RUF", "PL", "N", "S", "A", "PIE", "RET",
+    "ARG", "PTH", "ERA", "TRY", "ISC", "Q", "BLE", "FBT", "DTZ", "T20", "PERF", "FURB",
+]
+ignore = [
+    "DTZ007", "DTZ011",  # a local calendar: naive local dates are intended
+    "FBT003",  # tkinter and unittest.mock take positional booleans
+    "PERF203",  # one try per date format reads better than the alternatives
+    "TRY003",  # short messages on built-in exceptions are fine
+]
+
+[tool.ruff.lint.per-file-ignores]
+"office_planner/cli.py" = ["T201"]  # a CLI prints its results
+"tests/*" = ["PLR2004", "S603"]  # literal expected values; tests run the CLI through sys.executable
+
+[tool.mypy]
+strict = true
+python_version = "3.10"  # the oldest mypy supports; CI still runs the tests on 3.9
+files = ["office_planner", "tests"]
